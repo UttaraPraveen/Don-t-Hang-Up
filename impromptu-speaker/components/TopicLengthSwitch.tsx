@@ -8,48 +8,39 @@ interface Props {
 }
 
 export default function TopicLengthSwitch({ topicLength, onChange, disabled }: Props) {
-  // Mechanical click sound for the toggle
-  const playClick = () => {
-    // const audio = new Audio("/click.mp3"); // Uncomment if you add a click sound later
-    // audio.play().catch(() => {});
-  };
-
-  const handleToggle = (val: "word" | "phrase") => {
-    if (disabled || topicLength === val) return;
-    playClick();
-    onChange(val);
-  };
-
   return (
-    <div className="flex flex-col items-center justify-center mb-6">
-      <div className="text-zinc-500 font-mono text-[9px] mb-2 uppercase tracking-widest">
-        Transmission Mode
+    <div className="flex flex-col items-center justify-center mb-8">
+      <div className="text-cyan-600/70 font-mono text-[10px] mb-3 uppercase tracking-[0.3em]">
+        Data Packet Size
       </div>
       
-      {/* The Physical Switch Body */}
-      <div className="flex bg-zinc-900 border-4 border-zinc-800 rounded-sm p-1 shadow-[inset_0_4px_8px_rgba(0,0,0,0.6)]">
+      <div className="relative flex bg-black/60 p-1.5 rounded-xl border border-cyan-950 shadow-[inset_0_5px_15px_rgba(0,0,0,0.8)]">
+        {/* The sliding neon highlight */}
+        <div 
+          className="absolute top-1.5 bottom-1.5 w-[calc(50%-6px)] bg-cyan-500/20 border border-cyan-400/50 rounded-lg shadow-[0_0_15px_rgba(34,211,238,0.3)] transition-all duration-300 ease-out z-0"
+          style={{
+            left: topicLength === "word" ? "6px" : "calc(50% + 6px)"
+          }}
+        />
+
         <button
-          onClick={() => handleToggle("word")}
+          onClick={() => onChange("word")}
           disabled={disabled}
-          className={`px-4 py-2 font-mono text-xs transition-all duration-200 ${
-            topicLength === "word"
-              ? "bg-red-800 text-white shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"
-              : "text-zinc-600 hover:text-zinc-400"
-          } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+          className={`relative z-10 px-6 py-2.5 font-mono text-[10px] tracking-widest uppercase transition-colors duration-300 w-32 ${
+            topicLength === "word" ? "text-cyan-300 font-bold" : "text-cyan-800 hover:text-cyan-600"
+          }`}
         >
-          SINGLE WORD
+          Micro (Word)
         </button>
         
         <button
-          onClick={() => handleToggle("phrase")}
+          onClick={() => onChange("phrase")}
           disabled={disabled}
-          className={`px-4 py-2 font-mono text-xs transition-all duration-200 ${
-            topicLength === "phrase"
-              ? "bg-amber-600 text-black shadow-[inset_0_2px_4px_rgba(0,0,0,0.4)]"
-              : "text-zinc-600 hover:text-zinc-400"
-          } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
+          className={`relative z-10 px-6 py-2.5 font-mono text-[10px] tracking-widest uppercase transition-colors duration-300 w-32 ${
+            topicLength === "phrase" ? "text-cyan-300 font-bold" : "text-cyan-800 hover:text-cyan-600"
+          }`}
         >
-          FULL PHRASE
+          Macro (Phrase)
         </button>
       </div>
     </div>

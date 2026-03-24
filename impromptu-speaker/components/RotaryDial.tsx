@@ -1,5 +1,5 @@
 "use client";
-import React, { useState } from "react";
+import React from "react";
 
 interface RotaryDialProps {
   genres: string[];
@@ -9,64 +9,51 @@ interface RotaryDialProps {
 }
 
 export default function RotaryDial({ genres, selectedGenre, onSelect, disabled }: RotaryDialProps) {
-  const [isSpinning, setIsSpinning] = useState(false);
-
-  const handleDial = (genre: string) => {
-    if (disabled) return;
-    setIsSpinning(true);
-    onSelect(genre);
-    
-    // Reset the spin animation after it completes
-    setTimeout(() => {
-      setIsSpinning(false);
-    }, 500); 
-  };
+  const selectedIndex = genres.indexOf(selectedGenre);
+  const anglePerItem = 360 / genres.length;
+  // Rotate the carousel in the opposite direction so the selected item faces front
+  const carouselRotation = selectedIndex * -anglePerItem;
 
   return (
-    <div className="flex flex-col items-center justify-center my-6">
-      <div className="text-zinc-500 font-mono text-xs mb-4 uppercase tracking-widest">
-        Select Frequency
+    <div className="flex flex-col items-center justify-center my-12 perspective-[1000px]">
+      <div className="text-cyan-600/70 font-mono text-[10px] mb-8 uppercase tracking-[0.3em]">
+        Select Frequency Protocol
       </div>
       
-      {/* The Main Dial Base */}
-      <div 
-        className={`relative w-56 h-56 rounded-full bg-zinc-800 border-8 border-zinc-900 shadow-[inset_0_10px_20px_rgba(0,0,0,0.5)] flex items-center justify-center transition-transform duration-500 ease-in-out ${
-          isSpinning ? "-rotate-90" : "rotate-0"
-        }`}
-      >
-        {/* Center Pivot */}
-        <div className="absolute w-12 h-12 bg-zinc-700 rounded-full border-4 border-zinc-900 shadow-xl z-10" />
+      {/* 3D Scene Container */}
+      <div className="relative w-full h-24 flex items-center justify-center">
+        {/* The Rotating Cylinder */}
+        <div 
+          className="relative w-40 h-16 preserve-3d transition-transform duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
+          style={{ transform: `rotateY(${carouselRotation}deg)` }}
+        >
+          {genres.map((genre, index) => {
+            const angle = index * anglePerItem;
+            const isSelected = selectedGenre === genre;
+            // The magic Z-translation that pushes items out into a 3D circle
+            const translateZ = 120; 
 
-        {/* Placing the Genres in a Circle using Math */}
-        {genres.map((genre, index) => {
-          // Calculate positions (starting from top, going clockwise)
-          const angle = (index / genres.length) * 360 - 90; 
-          const radian = angle * (Math.PI / 180);
-          const radius = 80; // Distance from center
-          
-          const x = Math.cos(radian) * radius;
-          const y = Math.sin(radian) * radius;
-
-          const isSelected = selectedGenre === genre;
-
-          return (
-            <button
-              key={genre}
-              onClick={() => handleDial(genre)}
-              disabled={disabled}
-              style={{
-                transform: `translate(${x}px, ${y}px)`,
-              }}
-              className={`absolute w-14 h-14 rounded-full flex items-center justify-center text-[8px] font-mono border-2 transition-all duration-200 ${
-                isSelected
-                  ? "bg-amber-500 border-amber-300 text-black shadow-[0_0_15px_rgba(245,158,11,0.5)]"
-                  : "bg-zinc-900 border-zinc-700 text-zinc-400 hover:bg-zinc-700 hover:border-zinc-500"
-              } ${disabled ? "opacity-50 cursor-not-allowed" : "cursor-pointer"}`}
-            >
-              <span className="truncate w-10 text-center">{genre.substring(0, 4).toUpperCase()}</span>
-            </button>
-          );
-        })}
+            return (
+              <button
+                key={genre}
+                onClick={() => !disabled && onSelect(genre)}
+                disabled={disabled}
+                className={`absolute inset-0 m-auto w-32 h-12 flex items-center justify-center font-mono text-xs tracking-wider transition-all duration-500 ${
+                  isSelected 
+                    ? "bg-cyan-500/20 text-cyan-300 border border-cyan-400/50 shadow-[0_0_20px_rgba(34,211,238,0.4)]" 
+                    : "bg-black/40 text-cyan-800 border border-cyan-900/50 hover:text-cyan-500 hover:border-cyan-700"
+                }`}
+                style={{
+                  transform: `rotateY(${angle}deg) translateZ(${translateZ}px)`,
+                  backfaceVisibility: "hidden", // Hide items when they rotate to the back
+                  clipPath: "polygon(10% 0, 90% 0, 100% 50%, 90% 100%, 10% 100%, 0 50%)" // Cool sci-fi hexagon shape
+                }}
+              >
+                {genre.toUpperCase()}
+              </button>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
