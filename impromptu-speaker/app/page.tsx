@@ -1,14 +1,14 @@
 "use client";
 import React, { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence, useSpring, useTransform } from "framer-motion";
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-type Stage = "idle" | "selecting" | "dialing" | "ringing" | "speaking" | "result";
+import { motion, AnimatePresence, useMotionValue, useTransform } from "framer-motion";
 
 // ─── Data ─────────────────────────────────────────────────────────────────────
+type Stage = "idle" | "selecting" | "dialing" | "ringing" | "speaking" | "result";
+
 const GENRES = ["TECH", "POP", "ARTS", "SPORT", "FOOD", "TRAVEL", "HUMOR", "SCI"];
+
 const PROMPTS: Record<string, string[]> = {
-  TECH:   ["AI taking over your job",  "Your phone is smarter than you", "The last password you'll ever need"],
+  TECH:   ["AI taking over your job", "Your phone is smarter than you", "The last password you'll ever need"],
   POP:    ["Cancel culture went too far", "The greatest era of music", "Social media is a highlight reel"],
   ARTS:   ["Art without suffering is incomplete", "NFTs were never art", "Cinema peaked in the 90s"],
   SPORT:  ["The GOAT debate, settled", "Esports deserve Olympic gold", "Fans are part of the team"],
@@ -19,234 +19,278 @@ const PROMPTS: Record<string, string[]> = {
 };
 
 // ─── Rotary Dial ──────────────────────────────────────────────────────────────
-function RotaryDial({
-  genres, selectedGenre, onSelect, disabled,
-}: { genres: string[]; selectedGenre: string; onSelect: (g: string) => void; disabled: boolean }) {
-  const [spinAngle, setSpinAngle] = useState(0);
+function RotaryDial({ genres, selectedGenre, onSelect, disabled }: {
+  genres: string[]; selectedGenre: string; onSelect: (g: string) => void; disabled: boolean;
+}) {
+  const [dialRotation, setDialRotation] = useState(0);
 
-  const handleDial = (genre: string, index: number) => {
+  const handleClick = (genre: string, index: number) => {
     if (disabled) return;
+    const targetAngle = (index / genres.length) * 360;
+    const spinTo = targetAngle + 90 + 120;
+    setDialRotation(spinTo);
+    setTimeout(() => setDialRotation(0), 700);
     onSelect(genre);
-    const angleOfHole = (index / genres.length) * 360 - 90;
-    const stopperAngle = 120;
-    const req = stopperAngle - angleOfHole;
-    setSpinAngle(req > 0 ? req : req + 360);
-    setTimeout(() => setSpinAngle(0), 650);
   };
 
   return (
-    <div className="relative flex justify-center items-center" style={{ width: 240, height: 240 }}>
-      {/* Base plate */}
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          background: "radial-gradient(circle at 40% 30%, #b8914a, #7a5820 60%, #4a3210)",
-          boxShadow: "0 12px 40px rgba(0,0,0,0.5), inset 0 4px 12px rgba(255,255,255,0.15), inset 0 -6px 16px rgba(0,0,0,0.6)",
-          border: "6px solid #5a3e18",
-        }}
-      >
-        {/* Finger holes labels */}
-        {genres.map((genre, i) => {
-          const angle = (i / genres.length) * 360 - 90;
-          const rad = angle * (Math.PI / 180);
-          const r = 78;
-          const x = Math.cos(rad) * r;
-          const y = Math.sin(rad) * r;
-          return (
-            <div
-              key={`lbl-${genre}`}
-              className="absolute font-serif font-bold text-center"
-              style={{
-                fontSize: 9,
-                letterSpacing: "0.12em",
-                top: "50%",
-                left: "50%",
-                transform: `translate(calc(${x}px - 50%), calc(${y}px - 50%)) rotate(${angle + 90}deg)`,
-                color: selectedGenre === genre ? "#ffe066" : "rgba(255,230,180,0.75)",
-                textShadow: selectedGenre === genre ? "0 0 8px #ffe066" : "none",
-                transition: "color 0.3s",
-              }}
-            >
-              {genre}
-            </div>
-          );
-        })}
+    <div style={{ position: "relative", width: 200, height: 200 }}>
+      {/* Outer brass ring */}
+      <div style={{
+        position: "absolute", inset: 0, borderRadius: "50%",
+        background: "radial-gradient(circle at 38% 28%, #d4a843, #a07828 50%, #6a4e10 85%, #3d2c08)",
+        boxShadow: "0 8px 32px rgba(0,0,0,0.55), 0 2px 6px rgba(0,0,0,0.4), inset 0 2px 8px rgba(255,220,120,0.3), inset 0 -4px 12px rgba(0,0,0,0.5)",
+        border: "3px solid #7a5518",
+      }} />
 
-        {/* Center label disc */}
-        <div
-          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full flex flex-col items-center justify-center"
-          style={{
-            width: 74, height: 74,
-            background: "radial-gradient(circle at 40% 30%, #f5e8c8, #e0cfa0)",
-            border: "2px solid #c9a95a",
-            boxShadow: "inset 0 2px 6px rgba(0,0,0,0.3), 0 2px 4px rgba(0,0,0,0.3)",
-          }}
-        >
-          <span style={{ fontFamily: "Georgia, serif", fontSize: 7, letterSpacing: "0.25em", color: "#3a2a0a", fontWeight: 700 }}>DON'T</span>
-          <div style={{ width: 28, height: 1, background: "#9a7a3a", margin: "3px 0", opacity: 0.7 }} />
-          <span style={{ fontFamily: "Georgia, serif", fontSize: 7, letterSpacing: "0.25em", color: "#3a2a0a" }}>HANG UP</span>
-        </div>
-      </div>
-
-      {/* Spinning transparent dial */}
+      {/* Inner dial face that spins */}
       <motion.div
-        animate={{ rotate: spinAngle }}
-        transition={{ type: spinAngle === 0 ? "spring" : "tween", duration: spinAngle === 0 ? 0.75 : 0.35, ease: "easeInOut", stiffness: 120, damping: 14 }}
-        className="absolute inset-0 rounded-full z-10"
+        animate={{ rotate: dialRotation }}
+        transition={{ type: dialRotation === 0 ? "spring" : "tween", duration: dialRotation === 0 ? 0.7 : 0.3, stiffness: 120, damping: 14 }}
         style={{
-          background: "radial-gradient(circle, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.05) 100%)",
-          boxShadow: "inset 0 4px 12px rgba(255,255,255,0.25), inset 0 -4px 12px rgba(0,0,0,0.4)",
-          border: "1px solid rgba(255,255,255,0.15)",
+          position: "absolute", inset: 6, borderRadius: "50%",
+          background: "radial-gradient(circle at 40% 32%, #c8984a, #9a7030 55%, #5c3e0a)",
+          boxShadow: "inset 0 3px 10px rgba(255,200,100,0.2), inset 0 -4px 12px rgba(0,0,0,0.5)",
         }}
       >
+        {/* Finger holes */}
         {genres.map((genre, i) => {
           const angle = (i / genres.length) * 360 - 90;
-          const rad = angle * (Math.PI / 180);
-          const r = 78;
-          const x = Math.cos(rad) * r;
-          const y = Math.sin(rad) * r;
+          const rad = (angle * Math.PI) / 180;
+          const r = 64;
+          const cx = 94 + Math.cos(rad) * r;
+          const cy = 94 + Math.sin(rad) * r;
           return (
             <button
-              key={`hole-${genre}`}
-              onClick={() => handleDial(genre, i)}
+              key={genre}
+              onClick={() => handleClick(genre, i)}
               disabled={disabled}
               aria-label={genre}
               style={{
                 position: "absolute",
-                top: "50%", left: "50%",
-                width: 36, height: 36,
+                left: cx - 15, top: cy - 15,
+                width: 30, height: 30,
                 borderRadius: "50%",
                 border: "none",
                 cursor: disabled ? "default" : "pointer",
-                background: "rgba(60,30,10,0.55)",
-                transform: `translate(calc(${x}px - 50%), calc(${y}px - 50%))`,
-                boxShadow: "inset 0 3px 8px rgba(0,0,0,0.9), inset 0 -1px 3px rgba(255,200,100,0.2)",
+                background: "radial-gradient(circle at 40% 35%, rgba(80,50,10,0.7), rgba(20,10,2,0.95))",
+                boxShadow: "inset 0 3px 8px rgba(0,0,0,0.95), inset 0 -1px 3px rgba(180,130,50,0.15), 0 1px 2px rgba(0,0,0,0.5)",
               }}
             />
           );
         })}
       </motion.div>
 
-      {/* Metal stopper */}
-      <div
-        className="absolute z-20 pointer-events-none"
-        style={{
-          top: "64%", right: 6,
-          width: 42, height: 13,
-          borderRadius: "999px",
-          background: "linear-gradient(to bottom, #e8e8e8, #888)",
-          boxShadow: "0 3px 8px rgba(0,0,0,0.7), inset 0 1px 2px rgba(255,255,255,0.9)",
-          transform: "rotate(30deg)",
-        }}
-      />
+      {/* Center label — static, does NOT spin */}
+      <div style={{
+        position: "absolute", top: "50%", left: "50%", transform: "translate(-50%,-50%)",
+        width: 64, height: 64, borderRadius: "50%",
+        background: "radial-gradient(circle at 40% 30%, #f7edcc, #e4d09a 60%, #c9b060)",
+        border: "2.5px solid #a88030",
+        boxShadow: "inset 0 2px 6px rgba(0,0,0,0.3), 0 2px 5px rgba(0,0,0,0.4)",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
+        zIndex: 10, pointerEvents: "none", gap: 3,
+      }}>
+        <span style={{ fontFamily: "Georgia, serif", fontSize: 6.5, letterSpacing: "0.22em", color: "#2a1a04", fontWeight: 700, textTransform: "uppercase" }}>Don't</span>
+        <div style={{ width: 24, height: 0.5, background: "#7a5818", opacity: 0.7 }} />
+        <span style={{ fontFamily: "Georgia, serif", fontSize: 6.5, letterSpacing: "0.22em", color: "#2a1a04", textTransform: "uppercase" }}>Hang Up</span>
+      </div>
+
+      {/* Genre labels — outside dial, static */}
+      {genres.map((genre, i) => {
+        const angle = (i / genres.length) * 360 - 90;
+        const rad = (angle * Math.PI) / 180;
+        const r = 108;
+        const lx = 100 + Math.cos(rad) * r;
+        const ly = 100 + Math.sin(rad) * r;
+        const isSelected = selectedGenre === genre;
+        return (
+          <div key={`lbl-${genre}`} style={{
+            position: "absolute", left: lx, top: ly, transform: "translate(-50%, -50%)",
+            fontFamily: "Georgia, serif", fontSize: 8.5, fontWeight: 700, letterSpacing: "0.1em",
+            color: isSelected ? "#ffe066" : "rgba(255, 235, 170, 0.65)",
+            textShadow: isSelected ? "0 0 10px rgba(255,220,60,0.8)" : "0 1px 2px rgba(0,0,0,0.8)",
+            transition: "color 0.3s, text-shadow 0.3s",
+            pointerEvents: "none", whiteSpace: "nowrap",
+          }}>
+            {genre}
+          </div>
+        );
+      })}
+
+      {/* Stopper tab */}
+      <div style={{
+        position: "absolute", bottom: 14, right: 8,
+        width: 34, height: 11, borderRadius: 999,
+        background: "linear-gradient(to bottom, #e8e8e8 0%, #aaa 50%, #777 100%)",
+        boxShadow: "0 2px 6px rgba(0,0,0,0.7), inset 0 1px 2px rgba(255,255,255,0.8)",
+        transform: "rotate(22deg)", zIndex: 12,
+      }} />
     </div>
   );
 }
 
-// ─── Phone Body (3D SVG‑style CSS) ────────────────────────────────────────────
-function PhoneBody({ children, isRinging }: { children: React.ReactNode; isRinging: boolean }) {
+// ─── Earpiece End ─────────────────────────────────────────────────────────────
+function EarpieceEnd() {
   return (
-    <motion.div
-      animate={isRinging ? { rotate: [-2, 2, -2, 2, 0], y: [0, -4, 0, -4, 0] } : {}}
-      transition={{ repeat: isRinging ? Infinity : 0, duration: 0.4 }}
-      className="relative flex flex-col items-center"
-      style={{
-        width: 340,
-        background: "linear-gradient(145deg, #5e7d96 0%, #3a5f78 40%, #2c4a5e 100%)",
-        borderRadius: "28px 28px 60px 60px",
-        padding: "24px 24px 36px",
-        boxShadow: "0 30px 60px rgba(0,0,0,0.5), 0 10px 20px rgba(0,0,0,0.3), inset 0 2px 8px rgba(255,255,255,0.15), inset 0 -4px 12px rgba(0,0,0,0.4)",
-        border: "1.5px solid rgba(255,255,255,0.1)",
-      }}
-    >
-      {/* Top speaker grille */}
-      <div className="flex gap-1 mb-4">
-        {[...Array(7)].map((_, i) => (
-          <div key={i} style={{ width: 3, height: 14, borderRadius: 2, background: "rgba(0,0,0,0.4)", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.6)" }} />
+    <div style={{
+      width: 88, height: 88, borderRadius: "50%", flexShrink: 0,
+      background: "radial-gradient(circle at 38% 30%, #2e2e2e, #111 60%, #000)",
+      boxShadow: "inset 0 -6px 16px rgba(0,0,0,1), inset 0 3px 8px rgba(255,255,255,0.06), 0 6px 14px rgba(0,0,0,0.6)",
+      display: "flex", alignItems: "center", justifyContent: "center",
+    }}>
+      <div style={{
+        width: 68, height: 68, borderRadius: "50%",
+        background: "#0d0d0d", border: "1px solid #2a2a2a",
+        boxShadow: "inset 0 2px 8px rgba(0,0,0,0.9)",
+        display: "flex", flexWrap: "wrap", alignItems: "center", justifyContent: "center",
+        padding: 13, gap: 3,
+      }}>
+        {[...Array(9)].map((_, i) => (
+          <div key={i} style={{ width: 7, height: 7, borderRadius: "50%", background: "#070707", boxShadow: "inset 0 1px 2px rgba(0,0,0,1)" }} />
         ))}
       </div>
-      {children}
-      {/* Bottom decor */}
-      <div className="mt-4 flex gap-2 opacity-30">
-        {[...Array(4)].map((_, i) => (
-          <div key={i} style={{ width: 2, height: 8, borderRadius: 1, background: "rgba(255,255,255,0.4)" }} />
-        ))}
-      </div>
-    </motion.div>
+    </div>
   );
 }
 
 // ─── Handset ──────────────────────────────────────────────────────────────────
-function Handset({ lifted, onClick }: { lifted: boolean; onClick: () => void }) {
+function Handset({ lifted, onToggle }: { lifted: boolean; onToggle: () => void }) {
   return (
     <motion.div
-      onClick={onClick}
-      animate={{ y: lifted ? -70 : 0, rotate: lifted ? -18 : 0, scale: lifted ? 1.04 : 1 }}
-      transition={{ type: "spring", stiffness: 130, damping: 15 }}
-      className="relative flex items-center justify-center cursor-pointer"
-      style={{
-        width: 300, height: 64,
-        background: "linear-gradient(145deg, #1a1a1a, #0a0a0a)",
-        borderRadius: 999,
-        border: "1.5px solid #2a2a2a",
-        boxShadow: lifted
-          ? "0 40px 60px rgba(0,0,0,0.8), inset 0 4px 12px rgba(255,255,255,0.15)"
-          : "0 8px 24px rgba(0,0,0,0.8), inset 0 4px 12px rgba(255,255,255,0.1)",
-      }}
+      onClick={onToggle}
+      animate={{ y: lifted ? -90 : 0, rotate: lifted ? -20 : 0, x: lifted ? 10 : 0 }}
+      transition={{ type: "spring", stiffness: 110, damping: 14 }}
+      style={{ position: "absolute", top: 18, left: "50%", transform: "translateX(-50%)", cursor: "pointer", zIndex: 30, display: "flex", alignItems: "center" }}
     >
-      {/* Left earpiece */}
-      <Earpiece side="left" />
-      <span style={{ fontFamily: "Georgia, serif", fontSize: 9, letterSpacing: "0.35em", color: lifted ? "#ff4d4d" : "#c9a840", fontWeight: 700, textTransform: "uppercase" }}>
-        {lifted ? "Hang Up" : "Lift to Call"}
-      </span>
-      {/* Right mouthpiece */}
-      <Earpiece side="right" />
+      <div style={{ position: "relative", display: "flex", alignItems: "center", width: 300, height: 60 }}>
+        {/* SVG tapered body */}
+        <svg width="300" height="60" viewBox="0 0 300 60" style={{ position: "absolute", inset: 0 }}>
+          <defs>
+            <linearGradient id="hg" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="#3a3a3a" />
+              <stop offset="40%" stopColor="#1a1a1a" />
+              <stop offset="100%" stopColor="#080808" />
+            </linearGradient>
+            <linearGradient id="hshine" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(255,255,255,0.12)" />
+              <stop offset="100%" stopColor="rgba(0,0,0,0)" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M50,8 Q60,2 80,3 L220,3 Q240,2 250,8 L296,28 Q300,30 296,32 L250,52 Q240,58 220,57 L80,57 Q60,58 50,52 L4,32 Q0,30 4,28 Z"
+            fill="url(#hg)" stroke="#2a2a2a" strokeWidth="1"
+          />
+          <path
+            d="M52,10 Q62,5 82,6 L218,6 Q238,5 248,10 L288,28 L248,12 Q238,8 218,8 L82,8 Q62,8 52,12 Z"
+            fill="url(#hshine)"
+          />
+          {[120,130,140,150,160,170,180].map(x => (
+            <line key={x} x1={x} y1="15" x2={x} y2="45" stroke="rgba(255,255,255,0.04)" strokeWidth="1" />
+          ))}
+        </svg>
+        {/* Left earpiece */}
+        <div style={{ position: "absolute", left: -12, top: "50%", transform: "translateY(-50%)" }}>
+          <EarpieceEnd />
+        </div>
+        {/* Center label */}
+        <div style={{ position: "absolute", left: "50%", top: "50%", transform: "translate(-50%, -50%)", textAlign: "center", pointerEvents: "none", zIndex: 5 }}>
+          <span style={{
+            fontFamily: "Georgia, serif", fontSize: 9, fontWeight: 700, letterSpacing: "0.35em",
+            textTransform: "uppercase", color: lifted ? "#ff5555" : "#c9a840",
+            textShadow: lifted ? "0 0 12px rgba(255,60,60,0.5)" : "0 0 8px rgba(200,160,40,0.4)",
+            transition: "color 0.3s",
+          }}>
+            {lifted ? "Hang Up" : "Lift to Call"}
+          </span>
+        </div>
+        {/* Right mouthpiece */}
+        <div style={{ position: "absolute", right: -12, top: "50%", transform: "translateY(-50%)" }}>
+          <EarpieceEnd />
+        </div>
+      </div>
     </motion.div>
   );
 }
 
-function Earpiece({ side }: { side: "left" | "right" }) {
+// ─── Phone Body ───────────────────────────────────────────────────────────────
+function PhoneBody({ isRinging, children }: { isRinging: boolean; children: React.ReactNode }) {
   return (
-    <div
-      className="absolute flex items-center justify-center"
-      style={{
-        [side === "left" ? "left" : "right"]: -10,
-        width: 84, height: 84,
-        borderRadius: "50%",
-        background: "radial-gradient(circle at 35% 30%, #2a2a2a, #000)",
-        boxShadow: "inset 0 -4px 12px rgba(0,0,0,1), 0 6px 12px rgba(0,0,0,0.5)",
-      }}
+    <motion.div
+      animate={isRinging ? { rotate: [-1.5, 1.5, -1.5, 1.5, -1, 1, 0], y: [0, -3, 0, -3, 0] } : { rotate: 0, y: 0 }}
+      transition={isRinging ? { duration: 0.5, repeat: Infinity } : { duration: 0.3 }}
+      style={{ position: "relative", width: 360 }}
     >
-      <div
-        className="flex flex-wrap justify-center content-center gap-1 p-3"
-        style={{ width: 66, height: 66, borderRadius: "50%", background: "#111", border: "1px solid #333" }}
-      >
-        {[...Array(9)].map((_, i) => (
-          <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#0a0a0a", boxShadow: "inset 0 1px 2px rgba(0,0,0,0.9)" }} />
-        ))}
+      <div style={{
+        position: "relative", width: 360,
+        background: [
+          "radial-gradient(ellipse at 30% 20%, #8aaccb 0%, transparent 55%)",
+          "radial-gradient(ellipse at 75% 75%, #2a4a62 0%, transparent 55%)",
+          "linear-gradient(160deg, #6d8fa8 0%, #4a7090 25%, #3a5f7a 55%, #2c4a5e 80%, #1e3448 100%)",
+        ].join(", "),
+        borderRadius: "30px 30px 70px 70px / 24px 24px 60px 60px",
+        padding: "16px 20px 44px",
+        boxShadow: [
+          "0 40px 80px rgba(0,0,0,0.6)",
+          "0 16px 32px rgba(0,0,0,0.4)",
+          "0 4px 8px rgba(0,0,0,0.3)",
+          "inset 0 2px 12px rgba(255,255,255,0.18)",
+          "inset 0 -6px 20px rgba(0,0,0,0.5)",
+          "inset 2px 0 8px rgba(255,255,255,0.06)",
+        ].join(", "),
+        border: "1.5px solid rgba(160, 200, 230, 0.18)",
+      }}>
+        {/* Top edge highlight */}
+        <div style={{
+          position: "absolute", top: 0, left: "10%", right: "10%", height: 2,
+          background: "linear-gradient(90deg, transparent, rgba(255,255,255,0.35) 40%, rgba(255,255,255,0.25) 60%, transparent)",
+          borderRadius: "0 0 4px 4px",
+        }} />
+        {/* Speaker grille */}
+        <div style={{ display: "flex", justifyContent: "center", gap: 5, marginBottom: 20, paddingTop: 6 }}>
+          {[...Array(9)].map((_, i) => (
+            <div key={i} style={{
+              width: 3, height: 18, borderRadius: 2,
+              background: "linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.7))",
+              boxShadow: "inset 0 1px 2px rgba(0,0,0,0.8), 0 1px 1px rgba(255,255,255,0.06)",
+            }} />
+          ))}
+        </div>
+        {children}
+        {/* Bottom screws */}
+        <div style={{ display: "flex", justifyContent: "space-between", padding: "0 30px", marginTop: 16, opacity: 0.4 }}>
+          {[...Array(2)].map((_, i) => (
+            <div key={i} style={{
+              width: 10, height: 10, borderRadius: "50%",
+              background: "radial-gradient(circle at 35% 30%, #5a5a5a, #1a1a1a)",
+              boxShadow: "inset 0 1px 3px rgba(0,0,0,0.8), 0 1px 2px rgba(255,255,255,0.1)",
+            }} />
+          ))}
+        </div>
+        {/* Side shadows */}
+        <div style={{ position: "absolute", top: "15%", bottom: "5%", left: 0, width: 8, background: "linear-gradient(to right, rgba(0,0,0,0.35), transparent)", borderRadius: "30px 0 0 30px" }} />
+        <div style={{ position: "absolute", top: "15%", bottom: "5%", right: 0, width: 8, background: "linear-gradient(to left, rgba(0,0,0,0.35), transparent)", borderRadius: "0 30px 30px 0" }} />
       </div>
-    </div>
+    </motion.div>
   );
 }
 
 // ─── Timer Ring ───────────────────────────────────────────────────────────────
 function TimerRing({ seconds, total }: { seconds: number; total: number }) {
-  const r = 28;
-  const circ = 2 * Math.PI * r;
-  const frac = seconds / total;
+  const r = 26, circ = 2 * Math.PI * r, pct = seconds / total;
+  const color = seconds <= 10 ? "#ff5555" : "#ffe066";
   return (
-    <svg width={72} height={72}>
-      <circle cx={36} cy={36} r={r} fill="none" stroke="rgba(255,255,255,0.1)" strokeWidth={4} />
+    <svg width={68} height={68}>
+      <circle cx={34} cy={34} r={r} fill="none" stroke="rgba(255,255,255,0.08)" strokeWidth={4} />
       <motion.circle
-        cx={36} cy={36} r={r} fill="none"
-        stroke={seconds <= 10 ? "#ff4d4d" : "#ffe066"}
-        strokeWidth={4} strokeLinecap="round"
+        cx={34} cy={34} r={r} fill="none"
+        stroke={color} strokeWidth={4} strokeLinecap="round"
         strokeDasharray={circ}
-        animate={{ strokeDashoffset: circ * (1 - frac) }}
+        animate={{ strokeDashoffset: circ * (1 - pct) }}
         transition={{ duration: 1, ease: "linear" }}
-        style={{ rotate: -90, transformOrigin: "36px 36px" }}
+        style={{ rotate: -90, transformOrigin: "34px 34px" }}
       />
-      <text x={36} y={41} textAnchor="middle" fill="white" fontSize={18} fontFamily="Georgia, serif" fontWeight="bold">{seconds}</text>
+      <text x={34} y={39} textAnchor="middle" fill="white" fontSize={17} fontFamily="Georgia, serif" fontWeight="bold">{seconds}</text>
     </svg>
   );
 }
@@ -256,38 +300,24 @@ export default function Page() {
   const [stage, setStage] = useState<Stage>("idle");
   const [lifted, setLifted] = useState(false);
   const [selectedGenre, setSelectedGenre] = useState("");
-  const [topicLength, setTopicLength] = useState<"word" | "phrase">("phrase");
   const [prompt, setPrompt] = useState("");
   const [timeLeft, setTimeLeft] = useState(60);
-  const [totalTime] = useState(60);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Pick a prompt from the selected genre
   const pickPrompt = (genre: string) => {
     const list = PROMPTS[genre] ?? ["Speak your mind!"];
     return list[Math.floor(Math.random() * list.length)];
   };
 
-  const handlePickUp = () => {
-    if (stage !== "idle") return;
-    setLifted(true);
-    setStage("selecting");
-  };
-
-  const handleHangUp = () => {
-    setLifted(false);
-    setStage("idle");
-    setSelectedGenre("");
-    setPrompt("");
-    if (timerRef.current) clearInterval(timerRef.current);
+  const handleToggle = () => {
+    if (!lifted) { setLifted(true); setStage("selecting"); }
+    else resetAll();
   };
 
   const handleGenreSelect = (genre: string) => {
     if (stage !== "selecting") return;
     setSelectedGenre(genre);
     setStage("dialing");
-
-    // After dial animation, go ringing → speaking
     setTimeout(() => {
       setStage("ringing");
       setTimeout(() => {
@@ -297,166 +327,169 @@ export default function Page() {
         setStage("speaking");
         timerRef.current = setInterval(() => {
           setTimeLeft(prev => {
-            if (prev <= 1) {
-              clearInterval(timerRef.current!);
-              setStage("result");
-              return 0;
-            }
+            if (prev <= 1) { clearInterval(timerRef.current!); setStage("result"); return 0; }
             return prev - 1;
           });
         }, 1000);
-      }, 2000);
-    }, 800);
+      }, 2200);
+    }, 900);
+  };
+
+  const resetAll = () => {
+    setLifted(false); setStage("idle"); setSelectedGenre(""); setPrompt("");
+    if (timerRef.current) clearInterval(timerRef.current);
   };
 
   useEffect(() => () => { if (timerRef.current) clearInterval(timerRef.current); }, []);
 
+  // Mouse parallax
+  const mx = useMotionValue(0), my = useMotionValue(0);
+  const rotX = useTransform(my, [-300, 300], [6, -6]);
+  const rotY = useTransform(mx, [-300, 300], [-8, 8]);
+  const handleMouseMove = (e: React.MouseEvent) => {
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    mx.set(e.clientX - r.left - r.width / 2);
+    my.set(e.clientY - r.top - r.height / 2);
+  };
+
   return (
     <main
+      onMouseMove={handleMouseMove}
+      onMouseLeave={() => { mx.set(0); my.set(0); }}
       style={{
         minHeight: "100vh",
-        background: "linear-gradient(160deg, #f0ebe0 0%, #e8e0d0 50%, #ddd5c5 100%)",
-        display: "flex",
-        flexDirection: "column",
-        alignItems: "center",
-        justifyContent: "flex-start",
-        padding: "48px 24px 80px",
+        background: "linear-gradient(155deg, #f2ece0 0%, #eae2d2 40%, #ddd5c4 80%, #d5ccba 100%)",
+        display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-start",
+        padding: "44px 24px 120px",
         fontFamily: "Georgia, serif",
-        position: "relative",
-        overflow: "hidden",
+        position: "relative", overflow: "hidden",
       }}
     >
-      {/* Subtle paper grain overlay */}
-      <div style={{ position: "fixed", inset: 0, backgroundImage: "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.04'/%3E%3C/svg%3E\")", opacity: 0.5, pointerEvents: "none" }} />
+      {/* Paper grain */}
+      <svg style={{ position: "fixed", inset: 0, width: "100%", height: "100%", opacity: 0.04, pointerEvents: "none" }}>
+        <filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.65" numOctaves="3" stitchTiles="stitch" /><feColorMatrix type="saturate" values="0" /></filter>
+        <rect width="100%" height="100%" filter="url(#noise)" />
+      </svg>
 
       {/* Title */}
       <motion.div
-        initial={{ opacity: 0, y: -30 }}
+        initial={{ opacity: 0, y: -28 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.8, ease: "easeOut" }}
-        className="text-center mb-2"
+        transition={{ duration: 0.85, ease: [0.22, 1, 0.36, 1] }}
+        style={{ textAlign: "center", marginBottom: 4 }}
       >
-        <h1 style={{ fontSize: "clamp(42px, 8vw, 72px)", fontFamily: "'Georgia', serif", fontStyle: "italic", fontWeight: 700, color: "#1a1a1a", lineHeight: 1.1, margin: 0, letterSpacing: "-0.01em" }}>
+        <h1 style={{
+          fontFamily: "Georgia, serif", fontStyle: "italic",
+          fontSize: "clamp(48px, 9vw, 80px)", fontWeight: 700,
+          color: "#1a1208", letterSpacing: "-0.02em", lineHeight: 1.05, margin: 0,
+        }}>
           Don't Hang Up!
         </h1>
-        <p style={{ fontSize: "clamp(13px, 2vw, 16px)", color: "#5a5040", marginTop: 10, maxWidth: 420, lineHeight: 1.5 }}>
+        <p style={{
+          fontSize: "clamp(13px, 2vw, 15px)", color: "#6a5c40",
+          marginTop: 10, maxWidth: 400, lineHeight: 1.6, margin: "10px auto 0",
+        }}>
           An impromptu speaking prompt thingy! This is for the yap girlies
           and girlies who want to get their yap game together!
         </p>
       </motion.div>
 
-      {/* Mode toggle */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.4 }}
-        className="flex items-center gap-3 mb-8"
-      >
-        <span style={{ fontSize: 11, color: "#7a6a50", letterSpacing: "0.15em", textTransform: "uppercase" }}>Topic Mode:</span>
-        <button
-          onClick={() => setTopicLength(topicLength === "word" ? "phrase" : "word")}
-          disabled={stage !== "idle"}
-          style={{
-            display: "flex", alignItems: "center", gap: 6,
-            background: "rgba(0,0,0,0.08)", border: "1px solid rgba(0,0,0,0.15)",
-            borderRadius: 999, padding: "4px 14px", cursor: "pointer", fontSize: 11,
-            letterSpacing: "0.12em", color: "#3a2a10", fontFamily: "Georgia, serif",
-            fontWeight: 600,
-          }}
-        >
-          <span style={{ opacity: topicLength === "word" ? 1 : 0.3 }}>WORD</span>
-          <span style={{ opacity: 0.4 }}>/</span>
-          <span style={{ opacity: topicLength === "phrase" ? 1 : 0.3 }}>PHRASE</span>
-        </button>
-      </motion.div>
-
-      {/* Status hint */}
+      {/* Status */}
       <AnimatePresence mode="wait">
         <motion.p
           key={stage}
-          initial={{ opacity: 0, y: 6 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0, y: -6 }}
+          initial={{ opacity: 0, y: 5 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}
           transition={{ duration: 0.3 }}
-          style={{ fontSize: 12, color: "#8a7a60", letterSpacing: "0.2em", textTransform: "uppercase", marginBottom: 20, height: 20 }}
+          style={{ fontSize: 11, color: "#9a8860", letterSpacing: "0.25em", textTransform: "uppercase", marginTop: 20, marginBottom: 28, height: 18 }}
         >
-          {stage === "idle" && "↑  lift the handset to begin"}
-          {stage === "selecting" && "← dial a genre to spin"}
-          {stage === "dialing" && `dialing ${selectedGenre}…`}
-          {stage === "ringing" && "☎  ringing…"}
-          {stage === "speaking" && "🎙  speak now!"}
-          {stage === "result" && "✓  time's up — well done!"}
+          {stage === "idle"      && "↑  lift the handset to begin"}
+          {stage === "selecting" && "← dial a genre hole to spin"}
+          {stage === "dialing"   && `dialing ${selectedGenre}…`}
+          {stage === "ringing"   && "☎  ringing…"}
+          {stage === "speaking"  && "🎙  speak now!"}
+          {stage === "result"    && "✓  time's up — well done!"}
         </motion.p>
       </AnimatePresence>
 
-      {/* ── The Phone ── */}
+      {/* Phone with 3D parallax */}
       <motion.div
-        initial={{ opacity: 0, y: 60, scale: 0.92 }}
+        initial={{ opacity: 0, y: 60, scale: 0.9 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
-        transition={{ duration: 0.9, ease: [0.22, 1, 0.36, 1], delay: 0.2 }}
-        style={{ position: "relative" }}
+        transition={{ duration: 1, ease: [0.22, 1, 0.36, 1], delay: 0.15 }}
+        style={{ perspective: 900, perspectiveOrigin: "50% 40%" }}
       >
-        <PhoneBody isRinging={stage === "ringing"}>
-          {/* Rotary dial on body */}
-          <div style={{ marginBottom: 20 }}>
-            <RotaryDial
-              genres={GENRES}
-              selectedGenre={selectedGenre}
-              onSelect={handleGenreSelect}
-              disabled={stage !== "selecting"}
-            />
-          </div>
-
-          {/* Handset — sits on top of phone body */}
-          <Handset lifted={lifted} onClick={lifted ? handleHangUp : handlePickUp} />
-        </PhoneBody>
+        <motion.div style={{ rotateX: rotX, rotateY: rotY, transformStyle: "preserve-3d" }}>
+          <PhoneBody isRinging={stage === "ringing"}>
+            <div style={{ position: "relative", height: 70, marginBottom: 16 }}>
+              <Handset lifted={lifted} onToggle={handleToggle} />
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", marginTop: 8 }}>
+              <RotaryDial
+                genres={GENRES}
+                selectedGenre={selectedGenre}
+                onSelect={handleGenreSelect}
+                disabled={stage !== "selecting"}
+              />
+            </div>
+          </PhoneBody>
+        </motion.div>
       </motion.div>
 
-      {/* ── Overlay panel: speaking / result ── */}
+      {/* Speaking / Result overlay */}
       <AnimatePresence>
         {(stage === "speaking" || stage === "result") && (
           <motion.div
             key="panel"
-            initial={{ opacity: 0, y: 40, scale: 0.95 }}
+            initial={{ opacity: 0, y: 50, scale: 0.94 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20 }}
-            transition={{ type: "spring", stiffness: 200, damping: 24 }}
+            exit={{ opacity: 0, y: 30, scale: 0.96 }}
+            transition={{ type: "spring", stiffness: 220, damping: 26 }}
             style={{
-              position: "fixed", bottom: 32, left: "50%", transform: "translateX(-50%)",
-              background: "rgba(20,12,4,0.92)",
-              backdropFilter: "blur(20px)",
-              border: "1px solid rgba(200,160,60,0.3)",
-              borderRadius: 20,
-              padding: "28px 36px",
-              maxWidth: 460, width: "calc(100vw - 48px)",
-              textAlign: "center",
-              boxShadow: "0 20px 60px rgba(0,0,0,0.6)",
+              position: "fixed", bottom: 28, left: "50%", transform: "translateX(-50%)",
+              background: "rgba(12, 8, 2, 0.93)",
+              backdropFilter: "blur(24px)", WebkitBackdropFilter: "blur(24px)",
+              border: "1px solid rgba(200, 160, 60, 0.25)",
+              borderRadius: 22, padding: "28px 36px 24px",
+              maxWidth: 460, width: "calc(100vw - 40px)", textAlign: "center",
+              boxShadow: "0 24px 64px rgba(0,0,0,0.7), 0 4px 16px rgba(0,0,0,0.4)",
+              zIndex: 100,
             }}
           >
             {stage === "speaking" && (
-              <div className="flex flex-col items-center gap-4">
-                <div style={{ fontSize: 10, letterSpacing: "0.3em", color: "#c9a840", textTransform: "uppercase" }}>Your topic</div>
-                <div style={{ fontSize: "clamp(18px, 4vw, 26px)", fontFamily: "Georgia, serif", fontStyle: "italic", color: "#fff", lineHeight: 1.3 }}>"{prompt}"</div>
-                <div style={{ fontSize: 10, color: "#888", letterSpacing: "0.15em" }}>GENRE: {selectedGenre}</div>
-                <TimerRing seconds={timeLeft} total={totalTime} />
-                <button
-                  onClick={handleHangUp}
-                  style={{ marginTop: 4, padding: "8px 24px", borderRadius: 999, border: "1px solid #ff4d4d", background: "transparent", color: "#ff4d4d", fontSize: 11, letterSpacing: "0.2em", cursor: "pointer", fontFamily: "Georgia, serif" }}
-                >
-                  HANG UP
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 10, letterSpacing: "0.3em", color: "#c9a840", textTransform: "uppercase" }}>Your topic</span>
+                <p style={{ fontSize: "clamp(16px, 4vw, 23px)", fontFamily: "Georgia, serif", fontStyle: "italic", color: "#fff", lineHeight: 1.35, margin: 0 }}>
+                  "{prompt}"
+                </p>
+                <span style={{ fontSize: 10, color: "#666", letterSpacing: "0.15em" }}>GENRE: {selectedGenre}</span>
+                <TimerRing seconds={timeLeft} total={60} />
+                <button onClick={resetAll} style={{
+                  marginTop: 2, padding: "8px 24px", borderRadius: 999,
+                  border: "1px solid #ff5555", background: "transparent",
+                  color: "#ff5555", fontSize: 10, letterSpacing: "0.22em",
+                  cursor: "pointer", fontFamily: "Georgia, serif", textTransform: "uppercase",
+                }}>
+                  Hang Up
                 </button>
               </div>
             )}
             {stage === "result" && (
-              <div className="flex flex-col items-center gap-4">
-                <div style={{ fontSize: 32 }}>🎉</div>
-                <div style={{ fontSize: 22, fontFamily: "Georgia, serif", fontStyle: "italic", color: "#ffe066" }}>That's a wrap!</div>
-                <div style={{ fontSize: 14, color: "#aaa" }}>You spoke on: <span style={{ color: "#fff", fontStyle: "italic" }}>"{prompt}"</span></div>
-                <button
-                  onClick={handleHangUp}
-                  style={{ marginTop: 4, padding: "10px 28px", borderRadius: 999, border: "none", background: "linear-gradient(135deg, #c9a840, #9a7a20)", color: "#1a0a00", fontSize: 12, letterSpacing: "0.2em", cursor: "pointer", fontFamily: "Georgia, serif", fontWeight: 700 }}
-                >
-                  DIAL AGAIN
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 14 }}>
+                <span style={{ fontSize: 30 }}>🎉</span>
+                <p style={{ fontSize: 22, fontFamily: "Georgia, serif", fontStyle: "italic", color: "#ffe066", margin: 0 }}>
+                  That's a wrap!
+                </p>
+                <p style={{ fontSize: 13, color: "#888", margin: 0 }}>
+                  You spoke on: <em style={{ color: "#ddd" }}>"{prompt}"</em>
+                </p>
+                <button onClick={resetAll} style={{
+                  marginTop: 4, padding: "11px 30px", borderRadius: 999, border: "none",
+                  background: "linear-gradient(135deg, #d4a840, #9a7820)",
+                  color: "#1a0a00", fontSize: 11, letterSpacing: "0.22em",
+                  cursor: "pointer", fontFamily: "Georgia, serif", fontWeight: 700,
+                  textTransform: "uppercase", boxShadow: "0 4px 12px rgba(200,140,30,0.4)",
+                }}>
+                  Dial Again
                 </button>
               </div>
             )}
